@@ -10,11 +10,6 @@ const getDatabase = async () => {
 	return client
 }
 
-const migrateFirebase = async () => {
-	return
-}
-
 export {
 	getDatabase,
-	migrateFirebase
 }

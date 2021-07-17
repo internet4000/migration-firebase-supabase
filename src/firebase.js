@@ -15,9 +15,13 @@ const readDatabase = async () => {
 }
 
 /* takes a dict, return an array of models */
-const serializeCollection = (collection) => {
+const serializeCollection = (
+	collection = {}, // firebase collection dict
+) => {
 	return Object.keys(collection).map(modelId => {
-		return collection[modelId]
+		let model = collection[modelId]
+		model.id = model
+		return model
 	})
 }
 
