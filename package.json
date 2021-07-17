@@ -1,6 +1,6 @@
 {
 		"name": "radio4000-firebase-supabase-migration",
-		"version": "1.0.0",
+		"version": "0.0.1",
 		"description": "",
 		"type": "module",
 		"main": "index.js",

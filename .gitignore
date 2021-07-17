@@ -1,2 +1,4 @@
 input/*.json
 output/*.json
+
+node_modules/
