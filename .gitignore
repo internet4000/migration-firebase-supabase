@@ -1,4 +1,9 @@
+# ignore the data
 input/*.json
 output/*.json
 
+# ignore node moduels
 node_modules/
+
+# ignore our secret variables
+.env

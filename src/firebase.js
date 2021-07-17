@@ -32,6 +32,7 @@ const serializeTracks = (collectionDict) => {
 
 /* find the right serializer for each model */
 const serializeDatabase = (rawDb) => {
+	console.log(Object.keys(rawDb))
 	const models = {
 		channels: serializeChannels,
 		tracks: serializeTracks
