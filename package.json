@@ -5,13 +5,16 @@
 		"type": "module",
 		"main": "index.js",
 		"scripts": {
-				"test": "echo \"Error: no test specified\" && exit 1"
+				"test": "echo \"Error: no test specified\" && exit 1",
+				"firebase-login": "firebase login",
+				"firebase-export": "firebase database:get / --project firebase-radio4000 --output ./input/database.json"
 		},
 		"keywords": [],
 		"author": "",
 		"license": "ISC",
 		"dependencies": {
 				"dotenv": "^10.0.0",
+				"firebase-tools": "^9.17.0",
 				"pg": "^8.6.0"
 		}
 }

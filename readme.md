@@ -1,20 +1,31 @@
 # migration
 
-node js scripts to migrate the r4 firebase (realtime json) instance to
-supabase (postgresql).
-
+node js scripts to migrate the r4 firebase (realtime json) instance to supabase (postgresql).
 
 # How to
 
-## `.env`
-
-See `.env-example` for what to put in the `.env` file.
-
-## The datbase
+## The firebase database
 
 - in firebase realtime root, "export json" and save it to this project's `./input/database.json`.
-> console.firebase.google.com/project/<project-name>/database/<database-name>/data
+
+```
+npm install
+npm run firebase-login
+npm run firebase-export
+```
+
+## The postgres database
+
+See `.env-example` for what to put in the `.env` file.
+For Supabase, go to settings/database to see the connection info.
+
+## The actual migration
+
 - todo: script making a convertion json to sql
+
+```
+cat input/database.json | jq '.channels | map({name: .title, slug: .slug, description: .body, updated_at: .updated, created_at: .created})'
+```
 
 ## The users
 
