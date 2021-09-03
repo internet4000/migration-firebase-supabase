@@ -4,24 +4,37 @@ node js scripts to migrate the r4 firebase (realtime json) instance to supabase 
 
 # How to
 
-## The firebase database
+## Input Firebase Realtime Database
 
-- in firebase realtime root, "export json" and save it to this project's `./input/database.json`.
+We export the Firebase database and users with the CLI.  This will add `./input/database.json` and `./input/auth-users.json`.
 
 ```
 npm install
 npm run firebase-login
-npm run export-firebase
+npm run export-firebase-database
+npm run export-firebase-users
 ```
 
-## The postgres database
+## Output PostgreSQL database
 
-See `.env-example` for what to put in the `.env` file.
-For Supabase, go to settings/database to see the connection info.
+Copy `.env-example` to `.env` and fill out the variables from a Supabase project's settings -> database page.
 
 ## The actual migration
 
-- todo: script making a convertion json to sql
+Run this
+
+```
+node .
+```
+
+## How to migrate password users
+
+To migrate the users and passwords:
+
+- todo: in the cli (or web interface), get the password hash parameters, save this data in `./input/hash.json`
+- todo: write script that makes a convertion/import to postgresql (supabase)
+
+## Notes
 
 Flattens channels
 ```
@@ -32,13 +45,3 @@ Flattens tracks
 ```
 cat input/database.json | jq '.tracks | to_entries | map({id: .key, url: .value.url, title: .value.title, created_at: .value.created})' > input/tracks.json
 ```
-
-
-## The users
-
-To migrate the users and passwords:
-
-- npm run firebase-login
-- npm run export-firebase-users
-- in the cli (or web interface), get the password hash parameters, save this data in `./input/hash.json`
-- todo: write script that makes a convertion/import to postgresql (supabase)

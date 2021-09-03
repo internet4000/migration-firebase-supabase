@@ -7,7 +7,7 @@
 		"scripts": {
 				"test": "echo \"Error: no test specified\" && exit 1",
 				"firebase-login": "firebase login",
-				"export-firebase": "firebase database:get / --project firebase-radio4000 --output ./input/database.json",
+				"export-firebase-database": "firebase database:get / --project firebase-radio4000 --output ./input/database.json",
 				"export-firebase-users": "firebase auth:export --project firebase-radio4000 ./input/auth-users.json"
 		},
 		"keywords": [],
