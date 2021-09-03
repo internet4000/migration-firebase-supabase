@@ -6,6 +6,7 @@ import {migrate} from './src/migration.js'
 const main = async (env) => {
 	/* a firebase (serialized) json data */
 	const dbf = await getFirebase()
+	console.log('auth users, %s', dbf.authUsers.length)
 	console.log('channels, %s', dbf.channels.length)
 	console.log('tracks, %s', dbf.tracks.length)
 
