@@ -1,6 +1,5 @@
 import {readFile} from 'fs/promises'
 
-
 const readFileWrap = async (path) => {
 	let dataUtf8
 	try {
@@ -10,14 +9,8 @@ const readFileWrap = async (path) => {
 	}
 	return JSON.parse(dataUtf8)
 }
-
-const readDatabase = async () => {
-	return readFileWrap('./input/database.json')
-}
-
-const readAuthUsers = async () => {
-	return readFileWrap('./input/auth-users.json')
-}
+const readDatabase = async () => readFileWrap('./input/database.json')
+const readAuthUsers = async () => readFileWrap('./input/auth-users.json')
 
 // new Date(1411213745028).toISOString()
 // ==> "2014-09-20T11:49:05.028Z"
@@ -25,10 +18,8 @@ function convertTimestamp(timestamp) {
 	return new Date(Number(timestamp)).toISOString()
 }
 
-/* takes a dict, return an array of models */
-const serializeCollection = (
-	collection = {} // firebase collection dict
-) => {
+/* takes a firebase collection dict, return an array of models */
+const serializeCollection = (collection = {}) => {
 	return Object.keys(collection).map((id) => {
 		let model = collection[id]
 		model.id = id
@@ -64,7 +55,7 @@ const serializeChannels = (collectionDict) => {
 const serializeTracks = (collectionDict) => {
 	const collection = serializeCollection(collectionDict)
 	collection.forEach((item) => {
-		// A few tracks are missing a title. We need one.
+		// Make sure all tracks have a title.
 		if (!item.title) item.title = 'Untitled'
 	})
 	return collection
@@ -74,8 +65,8 @@ const serializeTracks = (collectionDict) => {
 const serializeDatabase = (rawDb) => {
 	console.log('serializing db', Object.keys(rawDb))
 	const models = {
-		users: serializeUsers,
 		authUsers: serializeAuthUsers,
+		users: serializeUsers,
 		channels: serializeChannels,
 		tracks: serializeTracks
 	}
