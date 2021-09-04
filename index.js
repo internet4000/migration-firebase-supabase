@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 import {getDatabase as getFirebase} from './src/firebase.js'
-import {getDatabase as getPostgres} from './src/postgres.js'
+import dbp from './src/postgres.js'
 import {migrate} from './src/migration.js'
 
 const main = async (env) => {
@@ -11,7 +11,6 @@ const main = async (env) => {
 	console.log('tracks, %s', dbf.tracks.length)
 
 	/* a postgres client */
-	const dbp = await getPostgres()
 	const dbTimeStarted = await dbp.query('SELECT NOW()')
 
 	/* do the migration */
@@ -29,8 +28,7 @@ Ended    : %s
 		dbTimeEnd.rows[0].now
 	)
 
-	/* end the connection to postgres */
-	dbp.end()
+	await dbp.pool.end()
 }
 
 /* get the dot env, required for postgres db connection */

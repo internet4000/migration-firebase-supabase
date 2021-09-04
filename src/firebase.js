@@ -63,7 +63,7 @@ const serializeTracks = (collectionDict) => {
 
 /* find the right serializer for each model */
 const serializeDatabase = (rawDb) => {
-	console.log('serializing db', Object.keys(rawDb))
+	console.log('Serializing database...', Object.keys(rawDb))
 	const models = {
 		authUsers: serializeAuthUsers,
 		users: serializeUsers,
@@ -84,6 +84,7 @@ const getDatabase = async () => {
 	const authUsers = await readAuthUsers()
 	rawDb.authUsers = authUsers.users
 	const db = serializeDatabase(rawDb)
+
 	return db
 }
 
