@@ -28,7 +28,7 @@ Ended    : %s
 		dbTimeEnd.rows[0].now
 	)
 
-	// await dbp.pool.end()
+	await dbp.pool.end()
 }
 
 /* get the dot env, required for postgres db connection */
