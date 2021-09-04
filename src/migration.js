@@ -12,10 +12,10 @@ const delay = (ms) =>
 	})
 
 const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
-	console.log('Migrating...')
+	console.log('Migrating... ')
 
 	// Collect the objects we want in an easier structure to import.
-	const easyDb = db.authUsers.slice(0, 3).map((authUser) => {
+	const easyDb = db.authUsers.map((authUser) => {
 		// Find user from auth user
 		const user = db.users.find((u) => u.id === authUser.localId)
 		// Find single channel
@@ -27,16 +27,19 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 		return {user: authUser, channel, tracks}
 	})
 
-	for (const entity of easyDb) {
+	console.log(`Migrating ${easyDb.length} users and their channel+tracks`)
+
+	const total = easyDb.length
+	for (const [index, entity] of easyDb.entries()) {
+		console.log(`Inserting ${index} of ${total}`, user.localId, channel?.title, tracks?.length)
 		if (!entity.user) {
 			console.log('skipping', entity)
 			continue
 		}
-		console.log(entity.user.createdAt)
 		await runQueries(entity, client)
 	}
 
-	// await delay(1000)
+	await delay(500)
 	console.log('Done migrating')
 	return true
 }
@@ -92,7 +95,6 @@ async function runQueries(entity, client) {
 	const {user, channel, tracks} = entity
 	const newUserId = v4()
 
-	console.log('Inserting to PostgreSQL for', user.email, channel?.title, tracks?.length)
 	// await delay(2000)
 	// console.log('done')
 
