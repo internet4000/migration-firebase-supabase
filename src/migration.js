@@ -10,7 +10,7 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 	console.log('Migrating...')
 
 	// Collect the objects we want in an easier structure to import.
-	const easyDb = db.authUsers.slice(0, 5).map((authUser) => {
+	const easyDb = db.authUsers.slice(0, 10).map((authUser) => {
 		// Find user from auth user
 		const user = db.users.find((u) => u.id === authUser.localId)
 		// Find single channel
@@ -39,20 +39,26 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 			console.log(err)
 		}
 
-		// let newChannelId
-		// try {
-		// 	const res = await client.query(insertChannel(channel))
-		// 	console.log(res.rows)
-		// 	newChannelId = res.rows[0].id
-		// } catch (err) {
-		// 	console.log(err)
-		// }
+		// Stop if the entity doesn't have a channel.
+		if (!channel) {
+			return
+		}
 
-		// try {
-		// 	await client.query(insertUserChannel(newUserId, newChannelId))
-		// } catch (err) {
-		// 	console.log(err)
-		// }
+		let newChannelId
+		try {
+			const res = await client.query(insertChannel(channel))
+			newChannelId = res.rows[0].id
+		} catch (err) {
+			console.log(err)
+		}
+		console.log(newChannelId)
+
+		try {
+			await client.query(insertUserChannel(newUserId, newChannelId))
+		} catch (err) {
+			console.log(err)
+		}
+
 		// insertTracks()
 		// insertChannelTracks()
 	})
