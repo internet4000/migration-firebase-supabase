@@ -4,44 +4,105 @@ import {v4} from 'uuid'
 // Take firebase: users, channels, tracks
 // Insert into postgres: auth users, public users, channels, user_channel, tracks, channel_track
 
-const delay = (ms) =>
-	new Promise((resolve) => {
-		setTimeout(() => {
-			resolve()
-		}, ms)
-	})
+// migrate() controls the flow
+// easyDb is a transformed firebase database where each user's data is grouped as an "entity".
+// runQueries() takes a single user/entity and insert all data one by one
 
 const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
-	console.log('Migrating... ')
+	console.log('Migration started. Preparing inputs...')
 
 	// Collect the objects we want in an easier structure to import.
-	const easyDb = db.authUsers.map((authUser) => {
-		// Find user from auth user
-		const user = db.users.find((u) => u.id === authUser.localId)
-		// Find single channel
-		if (!user) return {}
-		const channel = user.channels && db.channels.find((c) => c.id === Object.keys(user.channels)[0])
-		// Find all tracks
-		const trackIds = channel?.tracks ? Object.keys(channel.tracks) : []
-		const tracks = trackIds.length ? trackIds.map((trackId) => db.tracks.find((t) => t.id === trackId)) : null
-		return {user: authUser, channel, tracks}
-	})
+	const easyDb = db.authUsers
+		.slice(2300, 5000)
+		.filter((authUser) => authUser && authUser.localId)
+		.map((authUser) => {
+			// Find user from auth user
+			const user = db.users.find((u) => u.id === authUser.localId)
+			// If no user or channel, no need to migrate.
+			if (!user || !user.channels) {
+				console.log('skipping', authUser)
+				return
+			}
+			// Find single channel
+			const channel = user.channels && db.channels.find((c) => c.id === Object.keys(user.channels)[0])
+			// Find all tracks
+			const trackIds = channel?.tracks ? Object.keys(channel.tracks) : []
+			const tracks = trackIds.length
+				? trackIds.map((trackId) => db.tracks.find((t) => t.id === trackId))
+				: null
+			return {user: authUser, channel, tracks}
+		})
 
-	console.log(`Migrating ${easyDb.length} users and their channel+tracks`)
+	console.log(`Migrating ${easyDb.length} users with channel and tracks.`)
 
 	const total = easyDb.length
 	for (const [index, entity] of easyDb.entries()) {
-		console.log(`Inserting ${index} of ${total}`, user.localId, channel?.title, tracks?.length)
-		if (!entity.user) {
-			console.log('skipping', entity)
-			continue
-		}
-		await runQueries(entity, client)
+		const {user, channel, tracks} = entity
+		if (!user || !channel) continue
+		console.log(`Inserting ${index} of ${total}`, user?.localId, channel?.title, tracks?.length)
+		await runQueries({user, channel, tracks, client})
 	}
 
 	await delay(500)
 	console.log('Done migrating')
-	return true
+}
+
+async function runQueries({user, channel, tracks, client}) {
+	const newUserId = v4()
+
+	try {
+		await client.query(insertAuthUser(newUserId, user))
+	} catch (err) {
+		throw Error(err)
+	}
+
+	try {
+		await client.query(insertUser(newUserId))
+	} catch (err) {
+		throw Error(err)
+	}
+
+	// Stop if the entity doesn't have a channel.
+	if (!channel) return
+
+	let newChannelId
+	try {
+		const res = await client.query(insertChannel(channel))
+		newChannelId = res.rows[0].id
+	} catch (err) {
+		throw Error(err)
+	}
+
+	try {
+		await client.query(insertUserChannel(newUserId, newChannelId))
+	} catch (err) {
+		throw Error(err)
+	}
+
+	if (!tracks) return
+
+	let newTracks
+	try {
+		const trackQueries = tracks.filter((t) => t.url).map((track) => insertTrack(track))
+		const results = await Promise.all(trackQueries.map((q) => client.query(q)))
+		newTracks = results.map((result) => {
+			return {
+				id: result.rows[0].id,
+				created_at: result.rows[0].created_at,
+			}
+		})
+	} catch (err) {
+		throw Error(err)
+	}
+
+	try {
+		const channelTrackQueries = newTracks.map((newTrack) =>
+			insertChannelTrack(newUserId, newChannelId, newTrack.id, newTrack.created_at)
+		)
+		await Promise.all(channelTrackQueries.map((q) => client.query(q)))
+	} catch (err) {
+		throw Error(err)
+	}
 }
 
 const insertAuthUser = (id, authUser) => {
@@ -91,66 +152,18 @@ const insertChannelTrack = (userId, channelId, trackId, createdAt) => {
 	}
 }
 
-async function runQueries(entity, client) {
-	const {user, channel, tracks} = entity
-	const newUserId = v4()
-
-	// await delay(2000)
-	// console.log('done')
-
-	try {
-		await client.query(insertAuthUser(newUserId, user))
-	} catch (err) {
-		throw Error(err)
-	}
-	try {
-		await client.query(insertUser(newUserId))
-	} catch (err) {
-		throw Error(err)
-	}
-	// Stop if the entity doesn't have a channel.
-	if (!channel) return
-	let newChannelId
-	try {
-		const res = await client.query(insertChannel(channel))
-		newChannelId = res.rows[0].id
-	} catch (err) {
-		throw Error(err)
-	}
-	try {
-		await client.query(insertUserChannel(newUserId, newChannelId))
-	} catch (err) {
-		throw Error(err)
-	}
-	if (!tracks) return
-	let newTracks
-	try {
-		const trackQueries = tracks.filter((t) => t.url).map((track) => insertTrack(track))
-		const results = await Promise.all(trackQueries.map((q) => client.query(q)))
-		newTracks = results.map((result) => {
-			return {
-				id: result.rows[0].id,
-				created_at: result.rows[0].created_at,
-			}
-		})
-	} catch (err) {
-		throw Error(err)
-	}
-	try {
-		const channelTrackQueries = newTracks.map((newTrack) =>
-			insertChannelTrack(newUserId, newChannelId, newTrack.id, newTrack.created_at)
-		)
-		await Promise.all(channelTrackQueries.map((q) => client.query(q)))
-	} catch (err) {
-		throw Error(err)
-	}
-}
-
 // Supabase expects {provider: 'email/google/facebook/etc'}
 function extractProvider(firebaseUser) {
 	return firebaseUser.providerUserInfo.length > 0
 		? firebaseUser.providerUserInfo[0].providerId.replace('.com', '')
 		: 'email'
 }
+
+const delay = (ms) =>
+	new Promise((resolve) => {
+		setTimeout(() => {
+			resolve()
+		}, ms)
+	})
 
 export {migrate}

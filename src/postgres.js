@@ -9,14 +9,6 @@ pool.on('error', (err, client) => {
 	process.exit(-1)
 })
 
-// const getDatabase = async () => {
-// 	const client = await pool.connect().catch((e) => {
-// 		console.error(e)
-// 		console.error('Is your postgresql database running? Are the .env info correct?')
-// 	})
-// 	return client
-// }
-
 export default {
 	pool,
 	query: (text, params) => {
