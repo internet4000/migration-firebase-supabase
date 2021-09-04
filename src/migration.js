@@ -27,20 +27,17 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 		return {user: authUser, channel, tracks}
 	})
 
-	// console.log(easyDb)
-	// async function readFiles(files) {
-	// 	await Promise.all(files.map(readFile))
-	// }
-
 	for (const entity of easyDb) {
+		if (!entity.user) {
+			console.log('skipping', entity)
+			continue
+		}
 		console.log(entity.user.createdAt)
 		await runQueries(entity, client)
 	}
 
-	await delay(1000)
-
+	// await delay(1000)
 	console.log('Done migrating')
-
 	return true
 }
 
