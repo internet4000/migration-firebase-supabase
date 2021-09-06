@@ -13,7 +13,7 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 
 	// Collect the objects we want in an easier structure to import.
 	const easyDb = db.authUsers
-		.slice(2300, 5000)
+		.slice(0, 100)
 		.filter((authUser) => authUser && authUser.localId)
 		.map((authUser) => {
 			// Find user from auth user
@@ -35,6 +35,7 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 				: null
 			return {user: authUser, channel, tracks}
 		})
+		.filter(entity => entity !== false)
 
 	console.log(`Migrating ${easyDb.length} users with channel and tracks.`)
 
