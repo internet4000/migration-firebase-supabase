@@ -19,9 +19,12 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 			// Find user from auth user
 			const user = db.users.find((u) => u.id === authUser.localId)
 			// If no user or channel, no need to migrate.
-			if (!user || !user.channels) {
-				console.log('skipping', authUser)
-				return
+			if (!user) {
+				console.log('skipping because no user', authUser)
+				return false
+			} else if (!user.channels) {
+				console.log('skipping because no channels', authUser)
+				return false
 			}
 			// Find single channel
 			const channel = user.channels && db.channels.find((c) => c.id === Object.keys(user.channels)[0])
