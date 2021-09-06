@@ -114,8 +114,8 @@ const insertAuthUser = (id, authUser) => {
 	const provider = {provider: extractProvider(authUser)}
 	// @todo what about the password salt?
 	return {
-		text: 'INSERT INTO auth.users(id, email, email_confirmed_at, created_at, encrypted_password, raw_app_meta_data) VALUES($1, $2, $3, $4, $5, $6) RETURNING id',
-		values: [id, email, createdAt, createdAt, passwordHash, provider],
+		text: 'INSERT INTO auth.users(aud, role, instance_id, id, email, email_confirmed_at, created_at, encrypted_password, raw_app_meta_data) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
+		values: ["authenticated", "authenticated", '00000000-0000-0000-0000-000000000000', id, email, createdAt, createdAt, passwordHash, provider],
 	}
 }
 
