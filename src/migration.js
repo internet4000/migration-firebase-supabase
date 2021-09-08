@@ -1,4 +1,5 @@
 import {v4} from 'uuid'
+import {insertAuthUser, insertChannel, insertUserChannel, insertTrack, insertChannelTrack} from './queries.js'
 
 // What's the plan?
 // Take firebase: users, channels, tracks
@@ -49,7 +50,6 @@ async function runQueries(client, {user, channel, tracks}) {
 		const res = await client.query(insertChannel(channel))
 		newChannelId = res.rows[0].id
 	} catch (err) {
-		console.log('could not insert channel', channel)
 		throw Error(err)
 	}
 
@@ -84,99 +84,5 @@ async function runQueries(client, {user, channel, tracks}) {
 		throw Error(err)
 	}
 }
-
-const insertAuthUser = (id, authUser) => {
-	const {email, createdAt, passwordHash} = authUser
-	const provider = {provider: extractProvider(authUser)}
-	// @todo what about the password salt?
-	return {
-		text: `
-			INSERT INTO auth.users(
-				id,
-				instance_id,
-				aud,
-				role,
-				email,
-				encrypted_password,
-				email_confirmed_at,
-				created_at,
-				updated_at,
-				last_sign_in_at,
-				raw_app_meta_data,
-				raw_user_meta_data,
-				confirmation_token,
-				recovery_token,
-				email_change_token_new,
-				email_change,
-				is_super_admin
-			)
-			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-			RETURNING id
-		`,
-		values: [
-			id,
-			'00000000-0000-0000-0000-000000000000',
-			'authenticated',
-			'authenticated',
-			email,
-			passwordHash,
-			createdAt,
-			createdAt,
-			createdAt,
-			createdAt,
-			provider,
-			{},
-			'',
-			'',
-			'',
-			'',
-			false,
-		],
-	}
-}
-
-const insertChannel = (channel) => {
-	const {title, slug, body, created, updated, link, image} = channel
-	return {
-		text: 'INSERT INTO channels(name, slug, description, created_at, updated_at, url, image) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-		values: [title, slug, body, created, updated, link, image],
-	}
-}
-
-const insertUserChannel = (userId, channelId) => {
-	return {
-		text: 'INSERT INTO user_channel(user_id, channel_id) VALUES($1, $2)',
-		values: [userId, channelId],
-	}
-}
-
-const insertTrack = (track) => {
-	const {url, title, body, created} = track
-	return {
-		text: 'INSERT INTO tracks(url, title, description, created_at) VALUES($1, $2, $3, $4) RETURNING id, created_at',
-		values: [url, title, body, created],
-	}
-}
-
-const insertChannelTrack = (userId, channelId, trackId, createdAt) => {
-	return {
-		text: 'INSERT INTO channel_track(user_id, channel_id, track_id, created_at) VALUES($1, $2, $3, $4)',
-		values: [userId, channelId, trackId, createdAt],
-	}
-}
-
-// Supabase expects {provider: 'email/google/facebook/etc'}
-function extractProvider(firebaseUser) {
-	return firebaseUser.providerUserInfo.length > 0
-		? firebaseUser.providerUserInfo[0].providerId.replace('.com', '')
-		: 'email'
-}
-
-const delay = (ms) =>
-	new Promise((resolve) => {
-		setTimeout(() => {
-			resolve()
-		}, ms)
-	})
 
 export {migrate}
