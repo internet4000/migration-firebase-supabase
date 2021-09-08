@@ -1,6 +1,7 @@
 import {readFile} from 'fs/promises'
 
-// returns array of users with channel and maybe tracks
+// Reads input/database.json and input/auth-users.json
+// and returns a map of serialized entities {user, channel, tracks}.
 export default async function getDatabase(logs) {
 	const rawDb = await readDatabase()
 	const authUsers = await readAuthUsers()
@@ -8,10 +9,12 @@ export default async function getDatabase(logs) {
 	return serializeDatabase(rawDb, logs)
 }
 
+// Prepares the firebase db for import into the database
+// by grouping related data into a single entity per user.
+// Return false to skip a row.
 const serializeDatabase = (rawDb, logs) => {
-	const allUsers = rawDb.authUsers.slice(0, 4200)
-	const db = allUsers
-		.map((user, index) => {
+	const db = rawDb.authUsers
+		.map((user) => {
 			// User
 			user.id = user.localId
 			delete user.localId
@@ -43,6 +46,7 @@ const serializeDatabase = (rawDb, logs) => {
 			const tracks = channel.tracks
 				? Object.keys(channel.tracks).map((id) => {
 						const track = rawDb.tracks[id]
+						if (!track.title) track.title = 'Untitled'
 						track.id = id
 						track.created = toTimestamp(track.created)
 						return track
@@ -51,10 +55,10 @@ const serializeDatabase = (rawDb, logs) => {
 
 			return {user, channel, tracks}
 		})
-		.filter((entity) => entity?.channel)
+		// Remove invalid entities
+		.filter((entity) => entity && entity.channel)
 	return db
 }
-
 
 const readFileWrap = async (path) => {
 	let dataUtf8
@@ -75,10 +79,13 @@ function toTimestamp(timestamp) {
 }
 
 /* takes a firebase collection dict, return an array of models */
-const serializeCollection = (collection = {}) => {
-	return Object.keys(collection).map((id) => {
-		let model = collection[id]
-		model.id = id
-		return model
-	})
-}
+// const serializeCollection = (collection = {}) => {
+// 	return Object.keys(collection).map((id) => {
+// 		let model = collection[id]
+// 		model.id = id
+// 		return model
+// 	})
+// }
+// function serializeUser(user) {}
+// function serializeChannel(channel) {}
+// function serializeTrack(track) {}

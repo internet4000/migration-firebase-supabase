@@ -1,15 +1,18 @@
 import {v4} from 'uuid'
 import {insertAuthUser, insertChannel, insertUserChannel, insertTrack, insertChannelTrack} from './queries.js'
 
-// What's the plan?
-// Take firebase: users, channels, tracks
-// Insert into postgres: auth users, public users, channels, user_channel, tracks, channel_track
+/*
+	What's the plan?
+	input firebase: auth users, channels, tracks
+	output postgres: auth users, channels, user_channel, tracks, channel_track
 
-// migrate() controls the flow
-// easyDb is a transformed firebase database where each user's data is grouped as an "entity".
-// runQueries() takes a single user/entity and insert all data one by one
+	migrate() controls the flow
+	runQueries() takes a single user/entity and insert all data one by one
+*/
 
-const migrate = async ({firebaseDatabase: db, postgresClient: client, logs}) => {
+export default async function migrate({firebaseDatabase: db, postgresClient: client, logs}) {
+	const total = db.length
+
 	// Clean up
 	await client.query('DELETE FROM public.channel_track')
 	await client.query('DELETE FROM public.channels')
@@ -17,20 +20,37 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client, logs}) => 
 	await client.query('DELETE FROM public.user_channel')
 	await client.query('DELETE FROM auth.users')
 
-	// Collect the objects we want in an easier structure to import.
-
-	const total = db.length
-	for (const [index, entity] of db.entries()) {
+	// Version 1: parallel queries
+	// const queries = db.map(entity => runQueries(client, entity))
+	const queries = db.map(async (entity) => {
 		const {user, channel, tracks} = entity
-		console.log(`Inserting ${index + 1} of ${total}`, user?.id, channel?.title || 'no channel', tracks?.length || 'no tracks')
 		try {
+			// await delay(1000)
 			await runQueries(client, {user, channel, tracks})
 			logs.ok.push(user.id)
+			const processed = logs.ok.length + logs.failed.length
+			const progress = Math.round((processed / total) * 100)
+			console.log(progress + '%', user?.id, channel?.title || 'no channel', tracks?.length || 'no tracks')
 		} catch (err) {
-			console.log('nop', entity)
+			console.log('failed', user.id, err)
 			logs.failed.push(user.id)
 		}
-	}
+	})
+	await Promise.all(queries)
+
+	// Version 2: sequential queries
+	// for (const [index, entity] of db.entries()) {
+	// 	const {user, channel, tracks} = entity
+	// 	try {
+	// 		await runQueries(client, {user, channel, tracks})
+	// 		logs.ok.push(user.id)
+	// 		const progress = Math.round(((logs.ok.length + logs.failed.length) / total) * 100)
+	// 		console.log(progress + '%', user?.id, channel?.title || 'no channel', tracks?.length || 'no tracks')
+	// 	} catch (err) {
+	// 		console.log('nop', err, entity)
+	// 		logs.failed.push(user.id)
+	// 	}
+	// }
 }
 
 async function runQueries(client, {user, channel, tracks}) {
@@ -63,8 +83,8 @@ async function runQueries(client, {user, channel, tracks}) {
 
 	let newTracks
 	try {
-		const trackQueries = tracks.filter((t) => t.url).map((track) => insertTrack(track))
-		const results = await Promise.all(trackQueries.map((q) => client.query(q)))
+		const trackQueries = tracks.filter((t) => t.url).map((track) => client.query(insertTrack(track)))
+		const results = await Promise.all(trackQueries)
 		newTracks = results.map((result) => {
 			return {
 				id: result.rows[0].id,
@@ -76,13 +96,13 @@ async function runQueries(client, {user, channel, tracks}) {
 	}
 
 	try {
-		const channelTrackQueries = newTracks.map((newTrack) =>
-			insertChannelTrack(newUserId, newChannelId, newTrack.id, newTrack.created_at)
+		const channelTrackQueries = newTracks.map((track) =>
+			client.query(insertChannelTrack(newUserId, newChannelId, track.id, track.created_at))
 		)
-		await Promise.all(channelTrackQueries.map((q) => client.query(q)))
+		await Promise.all(channelTrackQueries)
 	} catch (err) {
 		throw Error(err)
 	}
 }
 
-export {migrate}
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
