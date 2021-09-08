@@ -1,5 +1,61 @@
 import {readFile} from 'fs/promises'
 
+// returns array of users with channel and maybe tracks
+export default async function getDatabase(logs) {
+	const rawDb = await readDatabase()
+	const authUsers = await readAuthUsers()
+	rawDb.authUsers = authUsers.users
+	return serializeDatabase(rawDb, logs)
+}
+
+const serializeDatabase = (rawDb, logs) => {
+	const allUsers = rawDb.authUsers.slice(0, 4200)
+	const db = allUsers
+		.map((user, index) => {
+			// User
+			user.id = user.localId
+			delete user.localId
+			user.createdAt = toTimestamp(user.createdAt)
+			if (user.lastSignedInAt) user.lastSignedInAt = toTimestamp(user.lastSignedInAt)
+
+			// Channel
+			const firebaseUser = rawDb.users[user.id]
+			if (!firebaseUser) {
+				logs.skipped.push(user.id)
+				return false
+			}
+			const channel = firebaseUser.channels
+				? Object.keys(firebaseUser.channels).map((id) => {
+						const channel = rawDb.channels[id]
+						if (!channel) return false
+						channel.created = toTimestamp(channel.created)
+						channel.updated = channel.updated ? toTimestamp(channel.updated) : channel.created
+						return channel
+				  })[0]
+				: false
+
+			if (!channel) {
+				logs.skipped.push(user.id)
+				return false
+			}
+
+			// Tracks
+			const tracks = channel.tracks
+				? Object.keys(channel.tracks).map((id) => {
+						const track = rawDb.tracks[id]
+						track.id = id
+						track.created = toTimestamp(track.created)
+						return track
+				  })
+				: []
+
+			return {user, channel, tracks}
+		})
+		.filter((entity) => entity?.channel)
+	return db
+}
+
+
 const readFileWrap = async (path) => {
 	let dataUtf8
 	try {
@@ -12,9 +68,9 @@ const readFileWrap = async (path) => {
 const readDatabase = async () => readFileWrap('./input/database.json')
 const readAuthUsers = async () => readFileWrap('./input/auth-users.json')
 
-// new Date(1411213745028).toISOString()
+// new Date("1411213745028").toISOString()
 // ==> "2014-09-20T11:49:05.028Z"
-function convertTimestamp(timestamp) {
+function toTimestamp(timestamp) {
 	return new Date(Number(timestamp)).toISOString()
 }
 
@@ -23,70 +79,6 @@ const serializeCollection = (collection = {}) => {
 	return Object.keys(collection).map((id) => {
 		let model = collection[id]
 		model.id = id
-		if (model.created) model.created = convertTimestamp(model.created)
-		if (model.updated) model.updated = convertTimestamp(model.updated)
 		return model
 	})
 }
-
-/* models serializers */
-const serializeUsers = (collectionDict) => {
-	return serializeCollection(collectionDict)
-}
-
-const serializeAuthUsers = (collection) => {
-	collection.forEach((item) => {
-		item.id = item.localId
-		delete item.localId
-		if (item.createdAt) item.createdAt = convertTimestamp(item.createdAt)
-		if (item.lastSignedInAt) item.lastSignedInAt = convertTimestamp(item.lastSignedInAt)
-	})
-	return collection
-}
-
-const serializeChannels = (collectionDict) => {
-	const collection = serializeCollection(collectionDict)
-	collection.forEach((item) => {
-		// delete item.tracks
-		delete item.favoriteChannels
-	})
-	return collection
-}
-
-const serializeTracks = (collectionDict) => {
-	const collection = serializeCollection(collectionDict)
-	collection.forEach((item) => {
-		// Make sure all tracks have a title.
-		if (!item.title) item.title = 'Untitled'
-	})
-	return collection
-}
-
-/* find the right serializer for each model */
-const serializeDatabase = (rawDb) => {
-	console.log('Serializing database...')//, Object.keys(rawDb))
-	const models = {
-		authUsers: serializeAuthUsers,
-		users: serializeUsers,
-		channels: serializeChannels,
-		tracks: serializeTracks
-	}
-	const serializedDb = {}
-	Object.keys(models).forEach((modelName) => {
-		const modelSerializer = models[modelName]
-		serializedDb[modelName] = modelSerializer(rawDb[modelName])
-	})
-
-	return serializedDb
-}
-
-const getDatabase = async () => {
-	const rawDb = await readDatabase()
-	const authUsers = await readAuthUsers()
-	rawDb.authUsers = authUsers.users
-	const db = serializeDatabase(rawDb)
-
-	return db
-}
-
-export {getDatabase}

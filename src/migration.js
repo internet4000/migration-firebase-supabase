@@ -8,9 +8,7 @@ import {v4} from 'uuid'
 // easyDb is a transformed firebase database where each user's data is grouped as an "entity".
 // runQueries() takes a single user/entity and insert all data one by one
 
-const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
-	console.log('Migration started...')
-
+const migrate = async ({firebaseDatabase: db, postgresClient: client, logs}) => {
 	// Clean up
 	await client.query('DELETE FROM public.channel_track')
 	await client.query('DELETE FROM public.channels')
@@ -19,57 +17,22 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 	await client.query('DELETE FROM auth.users')
 
 	// Collect the objects we want in an easier structure to import.
-	const easyDb = db.authUsers
-		// .slice(0, 50) // migrate only a few
-		// .filter((user) => user.id === 'facebook:10152422494934521') // migrates a single user
-		.map((authUser) => {
-			// Find user from auth user
-			const user = db.users.find((u) => u.id === authUser.id)
-			// If no user or channel, no need to migrate.
-			if (!user) {
-				console.log('skipping: no matching firebase user.', authUser.id)
-				return false
-			} else if (!user.channels) {
-				console.log('skipping: no channel', authUser.id)
-				return false
-			}
 
-			// Find single channel
-			const channel = user.channels && db.channels.find((c) => c.id === Object.keys(user.channels)[0])
-
-			// Find all tracks
-			const trackIds = channel?.tracks ? Object.keys(channel.tracks) : []
-			const tracks = trackIds.length
-				? trackIds.map((trackId) => db.tracks.find((t) => t.id === trackId))
-				: null
-
-			return {user: authUser, channel, tracks}
-		})
-		.filter((entity) => entity?.user)
-
-	console.log(`Migrating ${easyDb.length} users with channel and tracks.`)
-
-	const total = easyDb.length
-	for (const [index, entity] of easyDb.entries()) {
+	const total = db.length
+	for (const [index, entity] of db.entries()) {
 		const {user, channel, tracks} = entity
-		if (!user || !channel) {
-			console.log('skipping', entity)
-			continue
+		console.log(`Inserting ${index + 1} of ${total}`, user?.id, channel?.title || 'no channel', tracks?.length || 'no tracks')
+		try {
+			await runQueries(client, {user, channel, tracks})
+			logs.ok.push(user.id)
+		} catch (err) {
+			console.log('nop', entity)
+			logs.failed.push(user.id)
 		}
-		console.log(
-			`Inserting ${index + 1} of ${total}`,
-			user?.id,
-			channel?.title || 'no channel',
-			tracks?.length || 'no tracks'
-		)
-		await runQueries({user, channel, tracks, client})
 	}
-
-	await delay(500)
-	console.log('Done migrating')
 }
 
-async function runQueries({user, channel, tracks, client}) {
+async function runQueries(client, {user, channel, tracks}) {
 	const newUserId = v4()
 
 	try {
@@ -86,6 +49,7 @@ async function runQueries({user, channel, tracks, client}) {
 		const res = await client.query(insertChannel(channel))
 		newChannelId = res.rows[0].id
 	} catch (err) {
+		console.log('could not insert channel', channel)
 		throw Error(err)
 	}
 

@@ -1,31 +1,31 @@
 import dotenv from 'dotenv'
 import {getDatabase as getFirebase} from './src/firebase.js'
-import dbp from './src/postgres.js'
+import postgresClient from './src/postgres.js'
 import {migrate} from './src/migration.js'
 
+const logs = {
+	ok: [],
+	failed: [],
+	skipped: [],
+}
+
 const main = async (env) => {
-	/* a firebase (serialized) json data */
-	const dbf = await getFirebase()
-	console.log('users, %s', dbf.authUsers.length)
-	console.log('channels, %s', dbf.channels.length)
-	console.log('tracks, %s', dbf.tracks.length)
+	const firebaseDatabase = await getFirebase(logs)
+	console.log(`Migrating ${firebaseDatabase.length} users with channel and tracks...`)
 
-	/* a postgres client */
-	const dbTimeStarted = await dbp.query('SELECT NOW()')
+	const dbTimeStarted = await postgresClient.query('SELECT NOW()')
+	await migrate({firebaseDatabase, postgresClient, logs})
+	const dbTimeEnd = await postgresClient.query('SELECT NOW()')
 
-	/* do the migration */
-	const migration = await migrate({
-		firebaseDatabase: dbf,
-		postgresClient: dbp,
-	})
+	logs.start = new Date(dbTimeStarted.rows[0].now).getTime()
+	logs.end = new Date(dbTimeEnd.rows[0].now).getTime()
+	logs.duration = logs.end - logs.start
+	console.log(`Migration ended in ${logs.duration / 1000} seconds`)
+	console.log(`${logs.ok.length} ok, ${logs.failed.length} failed, ${logs.skipped.length} skipped.`)
 
-	const dbTimeEnd = await dbp.query('SELECT NOW()')
-	var start = new Date(dbTimeStarted.rows[0].now)
-	var end = new Date(dbTimeEnd.rows[0].now)
-	var elapsedSeconds = (end.getTime() - start.getTime()) / 1000
-	console.log(`Migration successful in ${elapsedSeconds}`)
+	fs.writeFileSync('./logs.json', JSON.stringify(logs, null, 2), 'utf-8')
 
-	await dbp.pool.end()
+	await postgresClient.pool.end()
 }
 
 /* get the dot env, required for postgres db connection */
