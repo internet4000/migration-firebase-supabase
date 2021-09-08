@@ -9,7 +9,14 @@ import {v4} from 'uuid'
 // runQueries() takes a single user/entity and insert all data one by one
 
 const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
-	console.log('Migration started. Preparing inputs...')
+	console.log('Migration started...')
+
+	// Clean up
+	await client.query('DELETE FROM public.channel_track')
+	await client.query('DELETE FROM public.channels')
+	await client.query('DELETE FROM public.tracks')
+	await client.query('DELETE FROM public.user_channel')
+	await client.query('DELETE FROM auth.users')
 
 	// Collect the objects we want in an easier structure to import.
 	const easyDb = db.authUsers
@@ -20,30 +27,41 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 			const user = db.users.find((u) => u.id === authUser.localId)
 			// If no user or channel, no need to migrate.
 			if (!user) {
-				console.log('skipping because no user', authUser)
+				console.log('skipping: no matching firebase user.', authUser.id)
 				return false
 			} else if (!user.channels) {
-				console.log('skipping because no channels', authUser)
+				console.log('skipping: no channel', authUser.id)
 				return false
 			}
+
 			// Find single channel
 			const channel = user.channels && db.channels.find((c) => c.id === Object.keys(user.channels)[0])
+
 			// Find all tracks
 			const trackIds = channel?.tracks ? Object.keys(channel.tracks) : []
 			const tracks = trackIds.length
 				? trackIds.map((trackId) => db.tracks.find((t) => t.id === trackId))
 				: null
+
 			return {user: authUser, channel, tracks}
 		})
-		.filter(entity => entity !== false)
+		.filter((entity) => entity?.user)
 
 	console.log(`Migrating ${easyDb.length} users with channel and tracks.`)
 
 	const total = easyDb.length
 	for (const [index, entity] of easyDb.entries()) {
 		const {user, channel, tracks} = entity
-		if (!user || !channel) continue
-		console.log(`Inserting ${index} of ${total}`, user?.localId, channel?.title, tracks?.length)
+		if (!user || !channel) {
+			console.log('skipping', entity)
+			continue
+		}
+		console.log(
+			`Inserting ${index + 1} of ${total}`,
+			user?.id,
+			channel?.title || 'no channel',
+			tracks?.length || 'no tracks'
+		)
 		await runQueries({user, channel, tracks, client})
 	}
 
