@@ -20,11 +20,11 @@ const migrate = async ({firebaseDatabase: db, postgresClient: client}) => {
 
 	// Collect the objects we want in an easier structure to import.
 	const easyDb = db.authUsers
-		.slice(0, 100)
-		.filter((authUser) => authUser && authUser.localId)
+		// .slice(0, 50) // migrate only a few
+		// .filter((user) => user.id === 'facebook:10152422494934521') // migrates a single user
 		.map((authUser) => {
 			// Find user from auth user
-			const user = db.users.find((u) => u.id === authUser.localId)
+			const user = db.users.find((u) => u.id === authUser.id)
 			// If no user or channel, no need to migrate.
 			if (!user) {
 				console.log('skipping: no matching firebase user.', authUser.id)
@@ -78,12 +78,6 @@ async function runQueries({user, channel, tracks, client}) {
 		throw Error(err)
 	}
 
-	try {
-		await client.query(insertUser(newUserId))
-	} catch (err) {
-		throw Error(err)
-	}
-
 	// Stop if the entity doesn't have a channel.
 	if (!channel) return
 
@@ -132,15 +126,48 @@ const insertAuthUser = (id, authUser) => {
 	const provider = {provider: extractProvider(authUser)}
 	// @todo what about the password salt?
 	return {
-		text: 'INSERT INTO auth.users(aud, role, instance_id, id, email, email_confirmed_at, created_at, encrypted_password, raw_app_meta_data) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
-		values: ["authenticated", "authenticated", '00000000-0000-0000-0000-000000000000', id, email, createdAt, createdAt, passwordHash, provider],
-	}
-}
-
-const insertUser = (id) => {
-	return {
-		text: 'INSERT INTO users(id) VALUES($1)',
-		values: [id],
+		text: `
+			INSERT INTO auth.users(
+				id,
+				instance_id,
+				aud,
+				role,
+				email,
+				encrypted_password,
+				email_confirmed_at,
+				created_at,
+				updated_at,
+				last_sign_in_at,
+				raw_app_meta_data,
+				raw_user_meta_data,
+				confirmation_token,
+				recovery_token,
+				email_change_token_new,
+				email_change,
+				is_super_admin
+			)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+			RETURNING id
+		`,
+		values: [
+			id,
+			'00000000-0000-0000-0000-000000000000',
+			'authenticated',
+			'authenticated',
+			email,
+			passwordHash,
+			createdAt,
+			createdAt,
+			createdAt,
+			createdAt,
+			provider,
+			{},
+			'',
+			'',
+			'',
+			'',
+			false,
+		],
 	}
 }
 

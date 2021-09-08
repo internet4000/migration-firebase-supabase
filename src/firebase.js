@@ -34,9 +34,10 @@ const serializeUsers = (collectionDict) => {
 	return serializeCollection(collectionDict)
 }
 
-const serializeAuthUsers = (collectionDict) => {
-	const collection = serializeCollection(collectionDict)
+const serializeAuthUsers = (collection) => {
 	collection.forEach((item) => {
+		item.id = item.localId
+		delete item.localId
 		if (item.createdAt) item.createdAt = convertTimestamp(item.createdAt)
 		if (item.lastSignedInAt) item.lastSignedInAt = convertTimestamp(item.lastSignedInAt)
 	})

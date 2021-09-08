@@ -6,7 +6,7 @@ import {migrate} from './src/migration.js'
 const main = async (env) => {
 	/* a firebase (serialized) json data */
 	const dbf = await getFirebase()
-	console.log('auth users, %s', dbf.authUsers.length)
+	console.log('users, %s', dbf.authUsers.length)
 	console.log('channels, %s', dbf.channels.length)
 	console.log('tracks, %s', dbf.tracks.length)
 
@@ -16,17 +16,14 @@ const main = async (env) => {
 	/* do the migration */
 	const migration = await migrate({
 		firebaseDatabase: dbf,
-		postgresClient: dbp
+		postgresClient: dbp,
 	})
 
 	const dbTimeEnd = await dbp.query('SELECT NOW()')
-	console.log(`
-Started  : %s
-Ended    : %s
-	`,
-		dbTimeStarted.rows[0].now,
-		dbTimeEnd.rows[0].now
-	)
+	var start = new Date(dbTimeStarted.rows[0].now)
+	var end = new Date(dbTimeEnd.rows[0].now)
+	var elapsedSeconds = (end.getTime() - start.getTime()) / 1000
+	console.log(`Migration successful in ${elapsedSeconds}`)
 
 	await dbp.pool.end()
 }
