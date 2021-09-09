@@ -1,12 +1,16 @@
 # migration
 
-node js scripts to migrate the r4 firebase (realtime json) instance to supabase (postgresql).
+INPUT Radio4000 Firebase (realtime database) instance
+OUTPUT instance of Supabase (PostgreSQL).
+
+This repo contains node scripts to migrate the Radio4000 database: users, channels and tracks.
 
 # How to
 
-## Input Firebase Realtime Database
+## Input Firebase database
 
-We export the Firebase database and users with the CLI.  This will add `./input/database.json` and `./input/auth-users.json`.
+We export the Firebase database and users with the CLI.
+This will add two files: `./input/database.json` and `./input/auth-users.json`.
 
 ```
 npm install
@@ -21,18 +25,14 @@ Copy `.env-example` to `.env` and fill out the variables from a Supabase project
 
 ## The actual migration
 
-Run this
-
-```
-node .
-```
+Run this `npm run migrate`.
 
 ## How to migrate password users
 
-To migrate the users and passwords:
+Users are migrated, but passwords are not.
 
-- todo: in the cli (or web interface), get the password hash parameters, save this data in `./input/hash.json`
-- todo: write script that makes a convertion/import to postgresql (supabase)
+- Email users can however reset their password via email
+- Users with Google or Facebook can log in as usual
 
 ## Notes
 
