@@ -29,7 +29,7 @@ const main = async (env) => {
 	logs.duration = logs.end - logs.start
 	console.log(`Migration ended in ${logs.duration / 1000} seconds`)
 	console.log(`${logs.ok.length} ok, ${logs.failed.length} failed, ${logs.skipped.length} skipped.`)
-	fs.writeFileSync('./logs.json', JSON.stringify(logs, null, 2), 'utf-8')
+	fs.writeFileSync('./output/logs.json', JSON.stringify(logs, null, 2), 'utf-8')
 
 	await postgresClient.pool.end()
 }

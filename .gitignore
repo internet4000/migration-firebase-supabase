@@ -7,4 +7,3 @@ node_modules/
 
 # ignore our secret variables
 .env
-output/logs.json
