@@ -5,10 +5,11 @@
 	"type": "module",
 	"main": "index.js",
 	"scripts": {
-		"migrate": "node .",
 		"firebase-login": "firebase login",
+		"export": "npm run export-firebase-database; npm run export-firebase-users",
 		"export-firebase-database": "firebase database:get / --project firebase-radio4000 --output ./input/database.json",
 		"export-firebase-users": "firebase auth:export --project firebase-radio4000 ./input/auth-users.json",
+		"migrate": "node .",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [],

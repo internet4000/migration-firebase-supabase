@@ -15,8 +15,7 @@ This will add two files: `./input/database.json` and `./input/auth-users.json`.
 ```
 npm install
 npm run firebase-login
-npm run export-firebase-database
-npm run export-firebase-users
+npm run export
 ```
 
 ## Output PostgreSQL database
