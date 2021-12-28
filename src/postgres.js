@@ -1,15 +1,17 @@
 import pg from 'pg'
 
-const getDatabase = async () => {
-	const {Client} = pg
-	const client = new Client()
-	await client.connect().catch(e => {
-		console.error(e)
-		console.error('Is your postgresql database running? Are the .env info correct?')
-	})
-	return client
-}
+const pool = new pg.Pool()
 
-export {
-	getDatabase,
+// the pool will emit an error on behalf of any idle clients
+// it contains if a backend error or network partition happens
+pool.on('error', (err, client) => {
+	console.error('Unexpected error on idle client', err)
+	process.exit(-1)
+})
+
+export default {
+	pool,
+	query: (text, params) => {
+		return pool.query(text, params)
+	}
 }

@@ -1,35 +1,37 @@
+import fs from 'fs'
 import dotenv from 'dotenv'
-import {getDatabase as getFirebase} from './src/firebase.js'
-import {getDatabase as getPostgres} from './src/postgres.js'
-import {migrate} from './src/migration.js'
+import getFirebase from './src/firebase.js'
+import postgresClient from './src/postgres.js'
+import migrate from './src/migration.js'
+
+const logs = {
+	start: 0,
+	end: 0,
+	duration: 0,
+	ok: [],
+	failed: [],
+	skipped: [],
+}
 
 const main = async (env) => {
-	/* a firebase (serialized) json data */
-	const dbf = await getFirebase()
-	console.log('channels, %s', dbf.channels.length)
-	console.log('tracks, %s', dbf.tracks.length)
+	const firebaseDatabase = await getFirebase(logs)
 
-	/* a postgres client */
-	const dbp = await getPostgres()
-	const dbTimeStarted = await dbp.query('SELECT NOW()')
+	const db = firebaseDatabase//.slice(0, 1000)
 
-	/* do the migration */
-	const migration = await migrate({
-		firebaseDatabase: dbf,
-		postgresClient: dbp
-	})
+	console.log(`Migrating ${db.length} users with channel and tracks...`)
 
-	const dbTimeEnd = await dbp.query('SELECT NOW()')
-	console.log(`
-Started  : %s
-Ended    : %s
-	`,
-		dbTimeStarted.rows[0].now,
-		dbTimeEnd.rows[0].now
-	)
+	const startTime = await postgresClient.query('SELECT NOW()')
+	await migrate({firebaseDatabase: db, postgresClient, logs})
+	const endTime = await postgresClient.query('SELECT NOW()')
 
-	/* end the connection to postgres */
-	dbp.end()
+	logs.start = new Date(startTime.rows[0].now).getTime()
+	logs.end = new Date(endTime.rows[0].now).getTime()
+	logs.duration = logs.end - logs.start
+	console.log(`Migration ended in ${logs.duration / 1000} seconds`)
+	console.log(`${logs.ok.length} ok, ${logs.failed.length} failed, ${logs.skipped.length} skipped.`)
+	fs.writeFileSync('./output/logs.json', JSON.stringify(logs, null, 2), 'utf-8')
+
+	await postgresClient.pool.end()
 }
 
 /* get the dot env, required for postgres db connection */
@@ -38,6 +40,5 @@ if (config.error) {
 	console.error('Missing .env file')
 } else {
 	/* init the app with dot env as config */
-	console.log('Migration running.')
 	main(config.parsed)
 }
