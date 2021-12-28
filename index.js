@@ -4,6 +4,9 @@ import getFirebase from './src/firebase.js'
 import postgresClient from './src/postgres.js'
 import migrate from './src/migration.js'
 
+// Uncomment to use a whitelist for importing.
+// const whitelist = ['facebook:10152422494934521']
+
 const logs = {
 	start: 0,
 	end: 0,
@@ -14,9 +17,9 @@ const logs = {
 }
 
 const main = async (env) => {
-	const firebaseDatabase = await getFirebase(logs)
+	const firebaseDatabase = await getFirebase(logs, whitelist)
 
-	const db = firebaseDatabase//.slice(0, 1000)
+	const db = firebaseDatabase //.slice(0, 1000)
 
 	console.log(`Migrating ${db.length} users with channel and tracks...`)
 

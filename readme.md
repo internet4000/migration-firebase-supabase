@@ -24,6 +24,10 @@ Copy `.env-example` to `.env` and fill out the variables from a Supabase project
 
 ## The actual migration
 
+IMPORTANT: This will migrate every auth user in the Firebase database along with any channel and track data.
+
+> If you only want to migrate certain users, uncomment and use the `whitelist` in `index.js`.
+
 Run this `npm run migrate`.
 
 ## How to migrate password users
