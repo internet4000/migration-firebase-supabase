@@ -64,10 +64,10 @@ export const insertUserChannel = (userId, channelId) => {
 }
 
 export const insertTrack = (track) => {
-	const {url, title, body, created} = track
+	const {url, discogsUrl, title, body, created} = track
 	return {
-		text: 'INSERT INTO tracks(url, title, description, created_at) VALUES($1, $2, $3, $4) RETURNING id, created_at',
-		values: [url, title, body, created],
+		text: 'INSERT INTO tracks(url, discogs_url, title, description, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id, created_at',
+		values: [url, discogsUrl, title, body, created],
 	}
 }
 

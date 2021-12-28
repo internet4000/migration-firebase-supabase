@@ -5,7 +5,7 @@ import postgresClient from './src/postgres.js'
 import migrate from './src/migration.js'
 
 // Uncomment to use a whitelist for importing.
-// const whitelist = ['facebook:10152422494934521']
+const whitelist = ['facebook:10152422494934521', 'google:109082707013786319045']
 
 const logs = {
 	start: 0,
